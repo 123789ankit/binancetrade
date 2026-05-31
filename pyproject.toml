@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "binancetrade"
+version = "0.1.0"
+description = "Paper-first Binance spot trading automation with strict risk controls."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "BinanceTrade Contributors" }]
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+
+[project.scripts]
+binancetrade = "binancetrade.cli:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[project.optional-dependencies]
+dashboard = ["streamlit>=1.35"]
