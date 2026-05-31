@@ -29,18 +29,6 @@ class Candle:
 
 
 @dataclass(frozen=True)
-class SymbolFilters:
-    """Trading constraints published by Binance for a spot symbol."""
-
-    symbol: str
-    min_quantity: Decimal
-    max_quantity: Decimal
-    step_size: Decimal
-    min_notional: Decimal
-    tick_size: Decimal
-
-
-@dataclass(frozen=True)
 class Position:
     symbol: str
     quantity: Decimal
@@ -57,7 +45,6 @@ class AccountSnapshot:
     equity: Decimal
     realized_pnl: Decimal
     open_positions: tuple[Position, ...]
-    daily_realized_pnl: Decimal = Decimal("0")
 
 
 @dataclass(frozen=True)
@@ -77,8 +64,3 @@ class OrderResult:
     price: Decimal
     status: str
     message: str
-    fee: Decimal = Decimal("0")
-    gross_quote_value: Decimal = Decimal("0")
-    net_quote_value: Decimal = Decimal("0")
-    realized_pnl: Decimal = Decimal("0")
-    order_id: str | None = None

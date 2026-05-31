@@ -1,7 +1,8 @@
 """Runtime configuration for the trading bot.
 
 The defaults intentionally keep the bot in paper mode with conservative risk.
-Live trading requires explicit opt-in flags and valid Binance API credentials.
+Live trading requires an explicit opt-in through ``BT_PAPER_MODE=false`` and
+valid Binance API credentials supplied through environment variables.
 """
 
 from __future__ import annotations
@@ -19,7 +20,6 @@ class BotConfig:
     """Configuration loaded from environment variables."""
 
     paper_mode: bool = True
-    enable_live_trading: bool = False
     api_key: str | None = None
     api_secret: str | None = None
     base_url: str = "https://api.binance.com"
@@ -37,14 +37,8 @@ class BotConfig:
     trailing_stop_pct: Decimal = Decimal("0.008")
     max_open_positions: int = 3
     min_confidence: Decimal = Decimal("0.60")
-    taker_fee_pct: Decimal = Decimal("0.001")
-    slippage_pct: Decimal = Decimal("0.0005")
     trade_log_path: str = "trade_log.csv"
-    state_path: str = ".binancetrade_state.json"
-    kill_switch_path: str = ".binancetrade_kill"
     dry_run_live_orders: bool = True
-    request_timeout_seconds: int = 15
-    request_retries: int = 2
 
     def validate(self) -> None:
         if not self.symbols:
@@ -59,28 +53,18 @@ class BotConfig:
             "take_profit_pct": self.take_profit_pct,
             "trailing_stop_pct": self.trailing_stop_pct,
             "min_confidence": self.min_confidence,
-            "taker_fee_pct": self.taker_fee_pct,
-            "slippage_pct": self.slippage_pct,
         }
         for name, value in decimal_fields.items():
-            if value < 0:
-                raise ValueError(f"{name} must be zero or greater")
-        if self.risk_per_trade_pct <= 0 or self.risk_per_trade_pct > Decimal("0.02"):
-            raise ValueError("risk_per_trade_pct should remain > 0 and <= 2% for capital protection")
-        if self.max_position_pct <= 0 or self.max_position_pct > Decimal("0.25"):
-            raise ValueError("max_position_pct should remain > 0 and <= 25% for this starter bot")
-        if self.daily_loss_limit_pct <= 0:
-            raise ValueError("daily_loss_limit_pct must be greater than zero")
+            if value <= 0:
+                raise ValueError(f"{name} must be greater than zero")
+        if self.risk_per_trade_pct > Decimal("0.02"):
+            raise ValueError("risk_per_trade_pct should remain <= 2% for capital protection")
+        if self.max_position_pct > Decimal("0.25"):
+            raise ValueError("max_position_pct should remain <= 25% for this starter bot")
         if self.max_open_positions < 1:
             raise ValueError("max_open_positions must be at least 1")
-        if self.request_timeout_seconds < 1:
-            raise ValueError("request_timeout_seconds must be at least 1")
-        if self.request_retries < 0:
-            raise ValueError("request_retries cannot be negative")
         if not self.paper_mode and (not self.api_key or not self.api_secret):
             raise ValueError("Live mode requires BT_BINANCE_API_KEY and BT_BINANCE_API_SECRET")
-        if not self.paper_mode and not self.enable_live_trading:
-            raise ValueError("Live mode requires BT_ENABLE_LIVE_TRADING=true")
 
 
 def load_config(env: dict[str, str] | None = None) -> BotConfig:
@@ -89,7 +73,6 @@ def load_config(env: dict[str, str] | None = None) -> BotConfig:
     source = os.environ if env is None else env
     config = BotConfig(
         paper_mode=_bool(source.get("BT_PAPER_MODE"), default=True),
-        enable_live_trading=_bool(source.get("BT_ENABLE_LIVE_TRADING"), default=False),
         api_key=_optional(source.get("BT_BINANCE_API_KEY")),
         api_secret=_optional(source.get("BT_BINANCE_API_SECRET")),
         base_url=source.get("BT_BINANCE_BASE_URL", BotConfig.base_url),
@@ -107,14 +90,8 @@ def load_config(env: dict[str, str] | None = None) -> BotConfig:
         trailing_stop_pct=_decimal(source.get("BT_TRAILING_STOP_PCT"), BotConfig.trailing_stop_pct),
         max_open_positions=_int(source.get("BT_MAX_OPEN_POSITIONS"), BotConfig.max_open_positions),
         min_confidence=_decimal(source.get("BT_MIN_CONFIDENCE"), BotConfig.min_confidence),
-        taker_fee_pct=_decimal(source.get("BT_TAKER_FEE_PCT"), BotConfig.taker_fee_pct),
-        slippage_pct=_decimal(source.get("BT_SLIPPAGE_PCT"), BotConfig.slippage_pct),
         trade_log_path=source.get("BT_TRADE_LOG_PATH", BotConfig.trade_log_path),
-        state_path=source.get("BT_STATE_PATH", BotConfig.state_path),
-        kill_switch_path=source.get("BT_KILL_SWITCH_PATH", BotConfig.kill_switch_path),
         dry_run_live_orders=_bool(source.get("BT_DRY_RUN_LIVE_ORDERS"), default=True),
-        request_timeout_seconds=_int(source.get("BT_REQUEST_TIMEOUT_SECONDS"), BotConfig.request_timeout_seconds),
-        request_retries=_int(source.get("BT_REQUEST_RETRIES"), BotConfig.request_retries),
     )
     config.validate()
     return config

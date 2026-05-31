@@ -4,6 +4,3 @@ __pycache__/
 .pytest_cache/
 .env
 trade_log.csv
-.binancetrade_state.json
-.binancetrade_kill
-india_tax_export.csv

@@ -50,7 +50,7 @@ def test_risk_engine_caps_position_size_by_max_position_pct():
 def test_daily_loss_limit_blocks_new_positions():
     config = BotConfig(starting_cash=Decimal("10000"), daily_loss_limit_pct=Decimal("0.02"))
     risk = RiskEngine(config)
-    account = AccountSnapshot(Decimal("9000"), Decimal("9000"), Decimal("-250"), (), Decimal("-250"))
+    account = AccountSnapshot(Decimal("9000"), Decimal("9000"), Decimal("-250"), ())
 
     approved, reason = risk.can_open_position(account)
 

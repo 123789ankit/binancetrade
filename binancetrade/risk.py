@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal, ROUND_DOWN
 
 from .config import BotConfig
-from .models import AccountSnapshot, Position, SignalAction, SymbolFilters, TradeSignal
+from .models import AccountSnapshot, Position, SignalAction, TradeSignal
 
 
 class RiskEngine:
@@ -16,18 +16,13 @@ class RiskEngine:
 
     def can_open_position(self, account: AccountSnapshot) -> tuple[bool, str]:
         daily_loss_limit = self.config.starting_cash * self.config.daily_loss_limit_pct
-        if account.daily_realized_pnl <= -daily_loss_limit:
+        if account.realized_pnl <= -daily_loss_limit:
             return False, "daily loss limit reached"
         if len(account.open_positions) >= self.config.max_open_positions:
             return False, "maximum open positions reached"
         return True, "risk checks passed"
 
-    def size_for_signal(
-        self,
-        signal: TradeSignal,
-        account: AccountSnapshot,
-        symbol_filters: SymbolFilters | None = None,
-    ) -> Decimal:
+    def size_for_signal(self, signal: TradeSignal, account: AccountSnapshot) -> Decimal:
         if signal.action != SignalAction.BUY or signal.price <= 0:
             return Decimal("0")
         risk_budget = account.equity * self.config.risk_per_trade_pct
@@ -35,14 +30,7 @@ class RiskEngine:
         risk_based_quantity = risk_budget / stop_distance
         max_notional = account.equity * self.config.max_position_pct
         cash_based_quantity = min(account.cash, max_notional) / signal.price
-        quantity = min(risk_based_quantity, cash_based_quantity)
-        if symbol_filters is None:
-            return quantity.quantize(Decimal("0.000001"), rounding=ROUND_DOWN)
-        quantity = round_step_size(quantity, symbol_filters.step_size)
-        notional = quantity * signal.price
-        if quantity < symbol_filters.min_quantity or notional < symbol_filters.min_notional:
-            return Decimal("0")
-        return min(quantity, symbol_filters.max_quantity)
+        return min(risk_based_quantity, cash_based_quantity).quantize(Decimal("0.000001"), rounding=ROUND_DOWN)
 
     def build_position(self, symbol: str, quantity: Decimal, entry_price: Decimal) -> Position:
         return Position(
@@ -80,11 +68,3 @@ class RiskEngine:
         if signal.action == SignalAction.SELL:
             return True, signal.reason
         return False, "hold position"
-
-
-def round_step_size(quantity: Decimal, step_size: Decimal) -> Decimal:
-    """Round ``quantity`` down to Binance's step size."""
-
-    if step_size <= 0:
-        return quantity
-    return (quantity // step_size) * step_size

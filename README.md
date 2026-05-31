@@ -10,28 +10,17 @@ margin support, and no withdrawal code.
 > position sizes small, and consult qualified tax/financial professionals for
 > India-specific obligations.
 
-## Current live-trading status
-
-This project is **not ready to place unsupervised live trades**. The code now has
-more live-safety gates, exchange-filter parsing, persistent paper state,
-fee/slippage modeling, a kill switch, and backtesting utilities, but
-`TradingEngine.run_live_once` still blocks real execution until live account
-reconciliation, open-order management, and manual operator review are completed.
-
 ## What this tool does
 
 - Fetches Binance Spot candles for configured symbols.
 - Produces rule-based signals using EMA-50, EMA-200, RSI, and ATR.
 - Adds a market-regime score that can later be enriched with AI, while keeping
   risk controls mandatory.
-- Runs a persistent local paper broker with stop-loss, take-profit,
-  trailing-stop, position sizing, daily loss limit, max open position controls,
-  fees, and slippage.
-- Parses Binance symbol filters so order quantities can respect step size and
-  minimum notional rules.
-- Writes a CSV trade log and can export an informational India-focused tax CSV.
-- Provides a walk-forward backtester that reuses the production strategy and
-  risk engine.
+- Runs a local paper broker with stop-loss, take-profit, trailing-stop,
+  position sizing, daily loss limit, and max open position controls.
+- Writes a CSV trade log for audit and tax recordkeeping.
+- Scaffolds live Binance Spot order calls, but live execution remains blocked
+  until account-balance syncing and exchange filter handling are implemented.
 
 ## Security rules
 
@@ -55,41 +44,7 @@ binancetrade scan
 binancetrade paper-once
 ```
 
-The bot defaults to paper mode and starts with simulated `10000` USDT. Paper
-state is saved to `.binancetrade_state.json`; reset it with:
-
-```bash
-binancetrade reset-paper
-```
-
-## Local dashboard
-
-Option 1 is now implemented as a **local Streamlit dashboard** for paper trading
-review. Install the optional dashboard dependency and launch it with:
-
-```bash
-pip install -e '.[dashboard]'
-binancetrade dashboard
-```
-
-The dashboard displays paper cash/equity, realized and daily PnL, open paper
-positions, recent trade-log rows, configured symbols, and kill-switch status. It
-does not place live orders, expose withdrawal functionality, or make the bot live
-trading ready.
-
-## Emergency kill switch
-
-Create the kill-switch file to stop scans/orders:
-
-```bash
-touch .binancetrade_kill
-```
-
-Remove it to allow paper operation again:
-
-```bash
-rm .binancetrade_kill
-```
+The bot defaults to paper mode and starts with simulated `10000` USDT.
 
 ## Configuration
 
@@ -98,7 +53,6 @@ Set environment variables to customize behavior:
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `BT_PAPER_MODE` | `true` | Keep the bot in paper mode. |
-| `BT_ENABLE_LIVE_TRADING` | `false` | Additional required flag before any future live mode. |
 | `BT_BINANCE_API_KEY` | empty | Binance key for signed endpoints. Not needed for public candle scans. |
 | `BT_BINANCE_API_SECRET` | empty | Binance secret. Never commit it. |
 | `BT_SYMBOLS` | `BTCUSDT,ETHUSDT` | Comma-separated spot symbols. |
@@ -111,13 +65,9 @@ Set environment variables to customize behavior:
 | `BT_STOP_LOSS_PCT` | `0.01` | 1% stop loss. |
 | `BT_TAKE_PROFIT_PCT` | `0.02` | 2% take profit. |
 | `BT_TRAILING_STOP_PCT` | `0.008` | 0.8% trailing stop. |
-| `BT_TAKER_FEE_PCT` | `0.001` | Paper taker fee model. |
-| `BT_SLIPPAGE_PCT` | `0.0005` | Paper slippage model. |
 | `BT_MAX_OPEN_POSITIONS` | `3` | Maximum simultaneous paper positions. |
 | `BT_TRADE_LOG_PATH` | `trade_log.csv` | CSV output path. |
-| `BT_STATE_PATH` | `.binancetrade_state.json` | Persistent paper account state. |
-| `BT_KILL_SWITCH_PATH` | `.binancetrade_kill` | File that blocks scans/orders when present. |
-| `BT_DRY_RUN_LIVE_ORDERS` | `true` | Keeps future live spot orders in dry-run if live code is extended. |
+| `BT_DRY_RUN_LIVE_ORDERS` | `true` | Keeps live spot orders in dry-run if live code is extended. |
 
 ## Strategy logic
 
@@ -134,17 +84,10 @@ A sell/protective signal is produced when the trend weakens, the price drops
 below EMA-200, EMA-50 drops below EMA-200, or RSI becomes overextended. Open
 paper positions can also exit through stop-loss, take-profit, or trailing-stop.
 
-## India tax export
+## Live trading status
 
-`binancetrade.tax.export_india_tax_csv` converts the trade log into an
-informational CSV with financial-year, USDT, and INR values using a user-provided
-USDINR rate. This is only a helper for your records and is **not tax advice**.
-
-## Remaining work before real live trading
-
-- Live account balance syncing.
-- Live position and open-order reconciliation.
-- Cancel/replace handling for live orders.
-- More exchange-filter coverage and integration tests against Binance testnet.
-- Manual approval workflow for any future live order placement.
-- At least 30-90 days of successful paper trading and backtesting review.
+Live order plumbing is present only as a scaffold. `TradingEngine.run_live_once`
+currently raises an error before placing any real order. This is deliberate:
+real-money trading should not be enabled until exchange filters, min notional,
+step size, balance syncing, reconciliation, tax exports, and kill-switch testing
+are complete.
